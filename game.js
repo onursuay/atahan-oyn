@@ -117,8 +117,10 @@ const MAX_WATER_POINTS = 140; // Cap for water wave points
 
 // Robot control state
 let robotControls = {
-    left: false,
-    right: false,
+    up: false,
+    down: false,
+    left: false, // Added back as it was removed in the example, but is standard movement
+    right: false, // Added back as it was removed in the example, but is standard movement
     jump: false,
     jumpHeld: false,
     punch: false,
@@ -3902,6 +3904,11 @@ class Robot {
         this.leftArmCooldown = 0;
         this.rightArmCooldown = 0;
         this.armFireRate = 12; // Frames (~200ms)
+
+        // Rotation properties
+        this.rotationAngle = 0;
+        this.targetRotation = 0;
+        this.rotationSpeed = 0.15; // Smooth rotation speed (Slerp-like)
     }
 
     fireArmLaser(side) {
@@ -3942,9 +3949,10 @@ class Robot {
         // Or specific 'ArmLaser' class? 
         // Let's use RobotHandLaser but with fixed target direction.
 
-        // Target is straight ahead
-        const targetX = laserX + (direction * 500);
-        const targetY = laserY; // Straight horizontal
+        // Target is straight ahead in the direction of rotation
+        const range = 1000;
+        const targetX = laserX + Math.cos(this.rotationAngle) * range;
+        const targetY = laserY + Math.sin(this.rotationAngle) * range;
 
         robotHandLasers.push(new RobotHandLaser(laserX, laserY, targetX, targetY));
 
@@ -3957,18 +3965,42 @@ class Robot {
         const height = window.innerHeight;
         const groundY = height * 0.85;
 
-        // Handle movement
-        if (robotControls.left) {
-            this.velocityX = -this.speed;
-            this.facingRight = false;
-        } else if (robotControls.right) {
-            this.velocityX = this.speed;
-            this.facingRight = true;
+        // Handle 8-way movement with normalization
+        let moveX = 0;
+        let moveY = 0;
+
+        if (robotControls.left) moveX -= 1;
+        if (robotControls.right) moveX += 1;
+        if (robotControls.up) moveY -= 1;
+        if (robotControls.down) moveY += 1;
+
+        // Normalize diagonal movement
+        let magnitude = Math.sqrt(moveX * moveX + moveY * moveY);
+        if (magnitude > 0.1) {
+            moveX /= magnitude;
+            moveY /= magnitude;
+            this.velocityX = moveX * this.speed;
+            this.velocityY = moveY * this.speed;
+
+            // Set facing direction
+            if (moveX > 0) this.facingRight = true;
+            else if (moveX < 0) this.facingRight = false;
+
+            // Calculate target rotation (in radians)
+            this.targetRotation = Math.atan2(moveY, moveX);
         } else {
-            // Friction: stronger damping while flying
+            // Friction: stronger damping while not moving
             const friction = this.onGround ? 0.8 : 0.85;
             this.velocityX *= friction;
+            this.velocityY *= friction;
         }
+
+        // Smoothly interpolate current rotation to target rotation
+        // Normalize angles to -PI to PI for shortest path interpolation
+        let diff = this.targetRotation - this.rotationAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        this.rotationAngle += diff * this.rotationSpeed;
 
         // Track air time for lift delay
         if (!this.onGround) {
@@ -4081,14 +4113,9 @@ class Robot {
                 // Drain energy
                 this.laserEnergy = Math.max(0, this.laserEnergy - this.laserEnergyDrainRate);
 
-                // Apply recoil
-                const dx = pointerPosition.x - handX;
-                const dy = pointerPosition.y - handY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance > 0) {
-                    const recoilX = -dx / distance * 1.5;
-                    this.velocityX += recoilX;
-                }
+                // Recoil Cancel: Set velocity to zero as requested
+                this.velocityX = 0;
+                this.velocityY = 0;
 
                 // Play laser sound (occasionally to avoid spam)
                 if (Math.random() < 0.3) {
@@ -4141,14 +4168,17 @@ class Robot {
         if (robotControls.leftArmFire && this.leftArmCooldown <= 0) {
             const handX = this.facingRight ? this.x + 10 : this.x + this.width - 10;
             const handY = this.y + 15; // Upper arm/shoulder height
-            const targetX = this.facingRight ? handX + 1000 : handX - 1000;
-            const targetY = handY; // Horizontal
+            // Target is straight ahead in the direction of rotation
+            const range = 1000;
+            const targetX = handX + Math.cos(this.rotationAngle) * range;
+            const targetY = handY + Math.sin(this.rotationAngle) * range;
 
             robotHandLasers.push(new RobotHandLaser(handX, handY, targetX, targetY));
             this.leftArmCooldown = this.armFireRate;
 
-            // Recoil
-            this.velocityX += this.facingRight ? -0.5 : 0.5;
+            // Recoil Cancel: Set velocity to zero as requested
+            this.velocityX = 0;
+            this.velocityY = 0;
 
             // Sound
             if (Math.random() < 0.5) playLaserZapSound();
@@ -4159,14 +4189,17 @@ class Robot {
         if (robotControls.rightArmFire && this.rightArmCooldown <= 0) {
             const handX = this.facingRight ? this.x + this.width - 5 : this.x + 5;
             const handY = this.y + 30; // Lower arm
-            const targetX = this.facingRight ? handX + 1000 : handX - 1000;
-            const targetY = handY; // Horizontal
+            // Target is straight ahead in the direction of rotation
+            const range = 1000;
+            const targetX = handX + Math.cos(this.rotationAngle) * range;
+            const targetY = handY + Math.sin(this.rotationAngle) * range;
 
             robotHandLasers.push(new RobotHandLaser(handX, handY, targetX, targetY));
             this.rightArmCooldown = this.armFireRate;
 
-            // Recoil
-            this.velocityX += this.facingRight ? -0.5 : 0.5;
+            // Recoil Cancel: Set velocity to zero as requested
+            this.velocityX = 0;
+            this.velocityY = 0;
 
             // Sound
             if (Math.random() < 0.5) playLaserZapSound();
@@ -4270,6 +4303,13 @@ class Robot {
         const drawY = this.y + screenShake.y;
 
         ctx.save();
+
+        // Apply smooth rotation around the robot's center
+        const centerX = drawX + this.width / 2;
+        const centerY = drawY + this.height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate(this.rotationAngle);
+        ctx.translate(-centerX, -centerY);
 
         // Draw shadow under feet
         const shadowY = drawY + this.height + 2;
@@ -7938,10 +7978,28 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 
 // Robot controls - Desktop
 document.addEventListener('keydown', (e) => {
+    // Global P key for fullscreen
+    if (e.key === 'p' || e.key === 'P') {
+        toggleFullscreen();
+        return;
+    }
+
     if (currentWeapon !== 'robot') return;
     initAudioOnInteraction();
 
     switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+            robotControls.up = true;
+            e.preventDefault();
+            break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+            robotControls.down = true;
+            e.preventDefault();
+            break;
         case 'ArrowLeft':
         case 'a':
         case 'A':
@@ -7987,6 +8045,16 @@ document.addEventListener('keyup', (e) => {
     if (currentWeapon !== 'robot') return;
 
     switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+            robotControls.up = false;
+            break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+            robotControls.down = false;
+            break;
         case 'ArrowLeft':
         case 'a':
         case 'A':
@@ -8955,4 +9023,24 @@ if (document.readyState === 'loading') {
     initBackground();
     generateCity();
     gameLoop();
+}
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
+        } else if (document.documentElement.msRequestFullscreen) {
+            document.documentElement.msRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
 }
