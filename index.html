@@ -371,6 +371,14 @@
 
     <!-- Scripts -->
     <script src="game.js"></script>
+
+    <!-- 3D Engine Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+
+    <!-- 3D Game Logic -->
+    <script src="game3d.js"></script>
+
     <script>
         // UI Switching Logic
         const previewUi = document.getElementById('preview-ui');
@@ -394,6 +402,11 @@
                 // Initialize audio if needed (usually needs user interaction)
                 if (window.initAudioOnInteraction) {
                     window.initAudioOnInteraction();
+                }
+
+                // Initialize 3D City Level
+                if (typeof initializeCityLevel === 'function') {
+                    initializeCityLevel();
                 }
             }, 500);
         }
