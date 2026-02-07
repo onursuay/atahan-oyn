@@ -4530,6 +4530,10 @@ class UFO {
         this.variant = ufoVariant || 'scout'; // UFO variant: 'scout', 'destroyer', 'harvester' (default to scout if not set)
         this.laserDPSMultiplier = 1.0;
         this.tractorStrengthMultiplier = 1.0;
+        // Tank control properties
+        this.angle = -Math.PI / 2; // Face up by default
+        this.rotationSpeed = 0.08;
+        this.friction = 0.96; // Less friction for space-like feel
         this.updateVariantStats(); // Apply variant stats
     }
 
@@ -4555,21 +4559,26 @@ class UFO {
         const height = window.innerHeight;
 
         // Handle movement
+        // Handle movement (Tank Controls)
+        // Horizontal input -> Rotate
         if (ufoControls.left) {
-            this.velocityX = -this.speed;
+            this.angle -= this.rotationSpeed;
         } else if (ufoControls.right) {
-            this.velocityX = this.speed;
-        } else {
-            this.velocityX *= 0.9; // Friction
+            this.angle += this.rotationSpeed;
         }
 
+        // Vertical input -> Move forward/backward
         if (ufoControls.up) {
-            this.velocityY = -this.speed;
+            this.velocityX += Math.cos(this.angle) * this.speed * 0.1; // *0.1 for acceleration feel
+            this.velocityY += Math.sin(this.angle) * this.speed * 0.1;
         } else if (ufoControls.down) {
-            this.velocityY = this.speed;
-        } else {
-            this.velocityY *= 0.9; // Friction
+            this.velocityX -= Math.cos(this.angle) * this.speed * 0.05; // Backwards is slower
+            this.velocityY -= Math.sin(this.angle) * this.speed * 0.05;
         }
+
+        // Apply friction
+        this.velocityX *= this.friction;
+        this.velocityY *= this.friction;
 
         // Update position
         this.x += this.velocityX;
@@ -4790,6 +4799,11 @@ class UFO {
         // Apply invisibility alpha (0.25-0.4 range as specified)
         const baseAlpha = this.invisible ? 0.3 : 1.0; // 0.3 is within 0.25-0.4 range
         ctx.globalAlpha = baseAlpha;
+
+        // Rotate context for tank controls
+        ctx.translate(drawX, drawY + this.height / 2);
+        ctx.rotate(this.angle + Math.PI / 2); // Adjust for sprite facing up
+        ctx.translate(-drawX, -(drawY + this.height / 2));
 
         // Draw tractor beam cone (if active)
         if (this.tractorActive) {
