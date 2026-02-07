@@ -256,6 +256,57 @@ function initAudioOnInteraction() {
 }
 
 // ============================================
+// Level Manager (Manages Game Flow and Spawning)
+// ============================================
+
+const LevelManager = {
+    spawnPoint: { x: 0, y: 0 }, // Will be set on init
+    isInitialized: false,
+
+    init: function () {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const groundY = height * 0.85;
+
+        // Set spawn point to center of screen, on ground
+        this.spawnPoint = {
+            x: width / 2,
+            y: groundY - 50 // Slightly above ground
+        };
+
+        this.isInitialized = true;
+        console.log("LevelManager Initialized. Spawn Point:", this.spawnPoint);
+    },
+
+    spawnRobotAtStart: function () {
+        if (!this.isInitialized) this.init();
+
+        // Clear existing robot
+        robot = null;
+
+        // Create new robot at spawn point
+        robot = new Robot(this.spawnPoint.x, this.spawnPoint.y);
+
+        // Ensure robot mode is active
+        currentWeapon = 'robot';
+
+        // Update UI
+        const weaponButtons = document.querySelectorAll('.weapon-btn');
+        weaponButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.weapon === 'robot') {
+                btn.classList.add('active');
+            }
+        });
+
+        const robotControlsUI = document.getElementById('robotControls');
+        if (robotControlsUI) robotControlsUI.style.display = 'flex';
+
+        console.log("Robot spawned at Level Start Point");
+    }
+};
+
+// ============================================
 // Weapon Selection UI
 // ============================================
 
@@ -276,7 +327,7 @@ function initWeaponUI() {
 
             // Update hint text
             if (weapon === 'robot') {
-                hintText.textContent = 'Move with controls, hold mouse to fire laser';
+                hintText.textContent = 'Move with controls, R/T for Arm Lasers';
                 robotControlsUI.style.display = 'flex';
                 detonateBtn.style.display = 'none';
                 // Reset laser firing when switching to robot mode
@@ -301,7 +352,8 @@ function initWeaponUI() {
 
             // Spawn robot if switching to robot mode (ALWAYS spawn)
             if (weapon === 'robot') {
-                spawnRobot();
+                // Use LevelManager to spawn
+                LevelManager.spawnRobotAtStart();
             }
 
             // Handle UFO mode: open drawer to select variant
@@ -3852,6 +3904,54 @@ class Robot {
         this.armFireRate = 12; // Frames (~200ms)
     }
 
+    fireArmLaser(side) {
+        // Determine fire position based on arm side
+        // Robot dimensions: width 35, height 45
+        // Arms are roughly at y + 15
+
+        let laserX, laserY;
+        const armY = this.y + 15;
+
+        if (side === 'left') {
+            // Left arm (from player perspective, it's left on screen if facing front)
+            // But let's assume 'left means left side of body'
+            // If facing right, left arm is "back" arm? 
+            // Let's simplified: Left Arm offset, Right Arm offset relative to center.
+
+            // Adjust based on facing direction
+            if (this.facingRight) {
+                laserX = this.x + 10; // Back arm
+            } else {
+                laserX = this.x + 25; // Front arm (reversed)
+            }
+        } else {
+            // Right arm
+            if (this.facingRight) {
+                laserX = this.x + 25; // Front arm
+            } else {
+                laserX = this.x + 10; // Back arm
+            }
+        }
+
+        laserY = armY;
+
+        // Create laser projectile (horizontal)
+        const direction = this.facingRight ? 1 : -1;
+
+        // Use RobotHandLaser logic but straight horizontal? 
+        // Or specific 'ArmLaser' class? 
+        // Let's use RobotHandLaser but with fixed target direction.
+
+        // Target is straight ahead
+        const targetX = laserX + (direction * 500);
+        const targetY = laserY; // Straight horizontal
+
+        robotHandLasers.push(new RobotHandLaser(laserX, laserY, targetX, targetY));
+
+        // Play sound
+        playLaserZapSound();
+    }
+
     update() {
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -3951,6 +4051,21 @@ class Robot {
             const punchX = this.facingRight ? this.x + this.width : this.x - 30;
             const punchY = this.y + this.height / 2;
             createPunchShockwave(punchX, punchY);
+        }
+
+        // Arm Laser Logic (R / T keys)
+        const currentTime = Date.now();
+
+        // Right Arm (R key)
+        if (robotControls.rightArmFire && currentTime - this.rightArmCooldown > 200) {
+            this.fireArmLaser('right');
+            this.rightArmCooldown = currentTime;
+        }
+
+        // Left Arm (T key)
+        if (robotControls.leftArmFire && currentTime - this.leftArmCooldown > 200) {
+            this.fireArmLaser('left');
+            this.leftArmCooldown = currentTime;
         }
 
         // Handle continuous laser firing (pointer-aimed, hold-to-fire)
@@ -7112,45 +7227,67 @@ function buildCityLayout(cityId) {
     const newStructures = [];
 
     if (cityId === 1) {
-        // City 1: Mixed NYC-style skyline with gaps and varied heights
+        // City 1: Side Placement (User Request)
+        // Static Buildings on Left and Right
+
+        const groundY = height * 0.85;
+
+        // Left Side Buildings (0% to 35%)
         let currentX = 0;
-        const minBuildingWidth = 20;
-        const maxBuildingWidth = 65;
+        const leftLimit = width * 0.35;
 
-        while (currentX < width) {
-            // Varied widths (narrow, medium, occasional wide)
+        while (currentX < leftLimit) {
             const widthRoll = Math.random();
-            let buildingWidth;
-            if (widthRoll < 0.5) {
-                buildingWidth = Math.random() * 15 + minBuildingWidth; // Narrow: 20-35
-            } else if (widthRoll < 0.85) {
-                buildingWidth = Math.random() * 20 + 35; // Medium: 35-55
-            } else {
-                buildingWidth = Math.random() * 15 + 55; // Wide: 55-70
-            }
+            let buildingWidth = 30 + Math.random() * 50; // Random width 30-80
 
-            // Strongly varied heights
+            // Check limits
+            if (currentX + buildingWidth > leftLimit) break;
+
+            // Varied heights
             const heightRoll = Math.random();
             let buildingHeight;
-            if (heightRoll < 0.25) {
-                buildingHeight = Math.random() * 80 + 100; // Short: 100-180
-            } else if (heightRoll < 0.6) {
-                buildingHeight = Math.random() * 120 + 180; // Mid-rise: 180-300
+            if (heightRoll < 0.3) {
+                buildingHeight = 100 + Math.random() * 100;
+            } else if (heightRoll < 0.7) {
+                buildingHeight = 200 + Math.random() * 100;
             } else {
-                buildingHeight = Math.random() * 150 + 300; // Very tall: 300-450
+                buildingHeight = 300 + Math.random() * 150;
             }
 
-            const y = groundY - buildingHeight;
+            const buildingY = groundY - buildingHeight;
+            const gap = 5 + Math.random() * 15;
 
-            // Gaps between buildings (6-20px)
-            const gap = Math.random() * 14 + 6;
-            const x = currentX + gap;
+            newBuildings.push(new Building(currentX, buildingY, buildingWidth, buildingHeight));
+            currentX += buildingWidth + gap;
+        }
 
-            if (x + buildingWidth <= width) {
-                newBuildings.push(new Building(x, y, buildingWidth, buildingHeight));
+        // Right Side Buildings (65% to 100%)
+        currentX = width * 0.65;
+        const rightLimit = width;
+
+        while (currentX < rightLimit) {
+            const widthRoll = Math.random();
+            let buildingWidth = 30 + Math.random() * 50;
+
+            // Check limits
+            if (currentX + buildingWidth > rightLimit + 30) break;
+
+            // Varied heights
+            const heightRoll = Math.random();
+            let buildingHeight;
+            if (heightRoll < 0.3) {
+                buildingHeight = 100 + Math.random() * 100;
+            } else if (heightRoll < 0.7) {
+                buildingHeight = 200 + Math.random() * 100;
+            } else {
+                buildingHeight = 300 + Math.random() * 150;
             }
 
-            currentX = x + buildingWidth;
+            const buildingY = groundY - buildingHeight;
+            const gap = 5 + Math.random() * 15;
+
+            newBuildings.push(new Building(currentX, buildingY, buildingWidth, buildingHeight));
+            currentX += buildingWidth + gap;
         }
     } else if (cityId === 2) {
         // City 2: Bridge variant with river
@@ -8276,14 +8413,15 @@ function renderCrosshair() {
 // Ground Rendering
 // ============================================
 
+// Render ground (Road / Grid)
 function renderGround() {
-    // Use window dimensions directly (CSS pixels, context is already scaled by dpr)
+    // Use window dimensions directly
     const width = window.innerWidth;
     const height = window.innerHeight;
     const groundY = height * 0.85;
 
     if (currentCityId === 2) {
-        // City 2: River and bridge
+        // City 2: River and bridge (Keep existing logic)
         const waterY = groundY + 20;
         const waterHeight = 40;
         const riverWidth = width * 0.4;
@@ -8307,13 +8445,6 @@ function renderGround() {
             waterGradient.addColorStop(1, '#0a1a3a');
             ctx.fillStyle = waterGradient;
             ctx.fillRect(riverStartX, waterY, riverWidth, waterHeight);
-
-            ctx.strokeStyle = 'rgba(100, 150, 200, 0.5)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(riverStartX, waterY);
-            ctx.lineTo(riverStartX + riverWidth, waterY);
-            ctx.stroke();
         }
 
         // Ground lines
@@ -8333,17 +8464,43 @@ function renderGround() {
             }
         });
     } else {
-        // City 1 & 3: Normal ground
-        ctx.fillStyle = '#2c3e50';
+        // City 1 & 3: Enhanced Road / Grid
+
+        // Background for ground (Dark Asphalt)
+        ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(0, groundY, width, height - groundY);
 
-        // Ground line
-        ctx.strokeStyle = '#34495e';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, groundY);
-        ctx.lineTo(width, groundY);
-        ctx.stroke();
+        // Draw perspective grid / road markings
+        ctx.save();
+
+        // Road surface texture (noise-like)
+        // (Skipping complex noise for performance, using color)
+
+        // Road Stripes (Horizontal for side-scroller)
+        ctx.fillStyle = '#e0e0e0';
+        const stripeWidth = 60;
+        const stripeHeight = 15;
+        const stripeGap = 80;
+        const roadMiddleY = groundY + (height - groundY) / 2;
+
+        // Draw dashed center line
+        for (let x = 0; x < width; x += (stripeWidth + stripeGap)) {
+            ctx.fillRect(x, roadMiddleY - stripeHeight / 2, stripeWidth, stripeHeight);
+        }
+
+        // Top and Bottom Road Edges (Curbs)
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, groundY, width, 10); // Top Curb
+        // ctx.fillRect(0, height - 10, width, 10); // Bottom Curb
+
+        // "Invisible Wall" indicators
+        // Left
+        ctx.fillStyle = 'rgba(255, 50, 50, 0.15)';
+        ctx.fillRect(0, 0, 10, height);
+        // Right
+        ctx.fillRect(width - 10, 0, 10, height);
+
+        ctx.restore();
     }
 
     // Render other static structures (billboards, etc.)
@@ -8781,6 +8938,10 @@ if (document.readyState === 'loading') {
         initUFOControls();
         initCitySelection();
         initBackground();
+
+        // Initialize Level Manager
+        LevelManager.init();
+
         generateCity();
         gameLoop();
     });
