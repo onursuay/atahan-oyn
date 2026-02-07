@@ -1,0 +1,333 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body.game-active {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.ui-top-left {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+}
+
+.ui-top-right {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.ui-bottom {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.btn {
+    padding: 12px 24px;
+    background: #16213e;
+    border: 2px solid #0f3460;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.btn:hover {
+    background: #0f3460;
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.weapon-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.weapon-btn {
+    padding: 10px 16px;
+    min-width: 80px;
+    min-height: 44px;
+    background: rgba(15, 52, 96, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    user-select: none;
+    text-transform: uppercase;
+}
+
+.weapon-btn:hover {
+    background: rgba(15, 52, 96, 0.9);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.weapon-btn.active {
+    background: #0f3460;
+    border-color: #4a90e2;
+    box-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
+}
+
+.weapon-btn:active {
+    transform: scale(0.95);
+}
+
+.hint {
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.stealth-indicator {
+    padding: 6px 12px;
+    background: rgba(100, 200, 255, 0.3);
+    border: 2px solid rgba(100, 200, 255, 0.6);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #88ccff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.7;
+        box-shadow: 0 0 5px rgba(100, 200, 255, 0.3);
+    }
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 10px rgba(100, 200, 255, 0.6);
+    }
+}
+
+.robot-controls,
+.ufo-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    pointer-events: none;
+}
+
+.control-group {
+    display: flex;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+.left-controls {
+    justify-content: flex-start;
+}
+
+.right-controls {
+    justify-content: flex-end;
+}
+
+.control-btn {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    background: rgba(15, 52, 96, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.1s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:active {
+    background: rgba(15, 52, 96, 1);
+    transform: scale(0.9);
+}
+
+#gameCanvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    background: linear-gradient(to bottom, #0f3460 0%, #16213e 50%, #1a1a2e 100%);
+    cursor: crosshair;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.ufo-drawer {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background: rgba(15, 52, 96, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 200px;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.drawer-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.variant-card {
+    background: rgba(22, 33, 62, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.variant-card:hover {
+    background: rgba(22, 33, 62, 1);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.variant-card.selected {
+    border-color: #4a90e2;
+    background: rgba(15, 52, 96, 1);
+    box-shadow: 0 0 8px rgba(74, 144, 226, 0.5);
+}
+
+.variant-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    text-transform: uppercase;
+}
+
+.variant-stats {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 8px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .ui-top-left {
+        top: 10px;
+        left: 10px;
+    }
+    
+    .ui-top-right {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .ui-bottom {
+        bottom: 80px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .weapon-btn {
+        padding: 8px 12px;
+        min-width: 70px;
+        min-height: 44px;
+        font-size: 11px;
+    }
+    
+    .hint {
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+    
+    .robot-controls {
+        bottom: 10px;
+        padding: 0 10px;
+    }
+    
+    .control-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 18px;
+    }
+}

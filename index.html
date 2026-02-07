@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>City Smash - Level Preview</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f2590d",
+                        "background-light": "#f8f6f5",
+                        "background-dark": "#181311",
+                        "surface-dark": "#221610",
+                        "accent-dark": "#392e28"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+
+    <!-- Game Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+
+    <style>
+        .scanline-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .industrial-grid {
+            background-image: radial-gradient(#392e28 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        /* Transition utility */
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.5s;
+        }
+
+        .fade-enter,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        /* Ensure game UI is hidden initially */
+        #game-ui-container {
+            display: none;
+        }
+
+        /* Ensure game canvas covers screen when active */
+        body.game-active #game-ui-container {
+            display: block;
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased">
+
+    <!-- ============================================ -->
+    <!-- PREVIEW UI (Mission Control) -->
+    <!-- ============================================ -->
+    <div id="preview-ui" class="relative flex h-screen w-full flex-col overflow-hidden transition-opacity duration-500">
+        <!-- Top Navigation -->
+        <header
+            class="flex h-16 items-center justify-between border-b border-solid border-accent-dark bg-background-dark/80 backdrop-blur-md px-8 z-50">
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-3 text-primary">
+                    <div class="size-8 flex items-center justify-center bg-primary/10 rounded-lg">
+                        <span class="material-symbols-outlined text-primary">deployed_code</span>
+                    </div>
+                    <h2 class="text-white text-xl font-bold leading-tight tracking-tight uppercase">Bot &amp; Blast</h2>
+                </div>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a class="text-white/70 hover:text-primary text-sm font-medium transition-colors"
+                        href="#">Levels</a>
+                    <a class="text-white/70 hover:text-primary text-sm font-medium transition-colors"
+                        href="#">Assets</a>
+                    <a class="text-white/70 hover:text-primary text-sm font-medium transition-colors" href="#">Physics
+                        Engine</a>
+                    <a class="text-white/70 hover:text-primary text-sm font-medium transition-colors" href="#">Team</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4">
+                <div
+                    class="hidden lg:flex items-center bg-surface-dark px-3 py-1.5 rounded-lg border border-accent-dark">
+                    <span class="material-symbols-outlined text-sm text-[#baa69c] mr-2">search</span>
+                    <input
+                        class="bg-transparent border-none text-sm text-white focus:ring-0 placeholder:text-[#baa69c] w-48"
+                        placeholder="Search parameters..." type="text" />
+                </div>
+                <button id="deploy-btn-top"
+                    class="flex items-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:brightness-110 transition-all">
+                    <span class="material-symbols-outlined text-sm">rocket_launch</span>
+                    <span>Deploy</span>
+                </button>
+                <div class="size-10 rounded-full border-2 border-accent-dark overflow-hidden">
+                    <img class="w-full h-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPIQ_f7iLDaw4470E6PqSI9pAq62KbDwZXF1ecg01tTr8Fcto-ymnfjYghl-IIEMeD4fk86jMfwsaZSQqUu1b6HKjBGbqZXI2UTjLZWjR9uurfL-1avuA1ydYOnbUiDWG7RAhs4Re3DHiszQhbY2EJbM6jbKse4u0JtjbsM1WijMeTzgVKmHAImnouXEoH_XIvp3MZc9Szv0kg_UzP10Je53iTgthb2kQ_POCuppp1-AKkTokjsC9nOjDwkh5B-8RW6Bw2e48K8A" />
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar: Level Selection -->
+            <aside
+                class="w-80 flex flex-col border-r border-accent-dark bg-surface-dark overflow-y-auto industrial-grid">
+                <div class="p-6">
+                    <h1 class="text-white text-xs font-bold uppercase tracking-widest text-primary mb-1">Mission Control
+                    </h1>
+                    <p class="text-[#baa69c] text-sm mb-6">Select deployment zone</p>
+                    <div class="flex flex-col gap-2" id="level-list">
+                        <!-- Level Item Active -->
+                        <div class="level-item group flex flex-col gap-2 p-3 rounded-xl bg-primary/10 border border-primary/30 cursor-pointer"
+                            onclick="selectLevel(1, this)">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-primary">map</span>
+                                <p class="text-white text-sm font-bold">City Center</p>
+                                <span class="ml-auto flex size-2 rounded-full bg-primary animate-pulse"></span>
+                            </div>
+                            <div class="h-20 w-full rounded-lg overflow-hidden bg-accent-dark relative">
+                                <img class="w-full h-full object-cover opacity-70 group-hover:scale-110 transition-transform duration-500"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4BtBVl66KSQpGJKgmJaIoMcm3aumlRASmeGBGme8IFS_msiaaVqqc8r37dep3Uf_wv9Ft5gj2R74GxeDdGB5H1hZWmThfcR1fkAP35CtKHCU2bg7u0X2qQt69UgL84r7mUx1pCWt6HJDWv2ZTAqV5TcO5UocklNtOrYOfG8CYCNhp6iloROme5HFSgt3tOoGPipzKMT-X7BRykHUr64Rw7jdlz9RgaEtYaeY7qN66k0XZHaj4wyKTUvhB1eNDV2XpVKSEYCHJ8Q" />
+                                <div class="absolute inset-0 bg-gradient-to-t from-background-dark to-transparent">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Other Level Items -->
+                        <div class="level-item flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent-dark/50 cursor-pointer transition-colors border border-transparent hover:border-accent-dark"
+                            onclick="selectLevel(2, this)">
+                            <span class="material-symbols-outlined text-[#baa69c]">factory</span>
+                            <p class="text-[#baa69c] text-sm font-medium">Industrial Zone</p>
+                        </div>
+                        <div class="level-item flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent-dark/50 cursor-pointer transition-colors border border-transparent hover:border-accent-dark"
+                            onclick="selectLevel(3, this)">
+                            <span class="material-symbols-outlined text-[#baa69c]">apartment</span>
+                            <p class="text-[#baa69c] text-sm font-medium">Skyline Heights</p>
+                        </div>
+                        <div class="level-item flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent-dark/50 cursor-pointer transition-colors border border-transparent hover:border-accent-dark"
+                            onclick="selectLevel(2, this)">
+                            <span class="material-symbols-outlined text-[#baa69c]">anchor</span>
+                            <p class="text-[#baa69c] text-sm font-medium">Harbor Havoc</p>
+                        </div>
+                        <div class="level-item flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent-dark/50 cursor-pointer transition-colors border border-transparent hover:border-accent-dark"
+                            onclick="selectLevel(3, this)">
+                            <span class="material-symbols-outlined text-[#baa69c]">science</span>
+                            <p class="text-[#baa69c] text-sm font-medium">Research Lab</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Bot Status Mini Card -->
+                <div class="mt-auto p-6 bg-background-dark/50 border-t border-accent-dark">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="material-symbols-outlined text-primary">smart_toy</span>
+                        <span class="text-white text-xs font-bold uppercase">Active Unit: MK-7</span>
+                    </div>
+                    <div class="w-full bg-accent-dark h-1 rounded-full overflow-hidden">
+                        <div class="bg-primary h-full w-[85%]"></div>
+                    </div>
+                    <div class="flex justify-between mt-1.5">
+                        <span class="text-[10px] text-[#baa69c] uppercase font-bold">Charge Status</span>
+                        <span class="text-[10px] text-primary font-bold">85%</span>
+                    </div>
+                </div>
+            </aside>
+            <!-- Main Content: Preview Stage -->
+            <main class="flex-1 flex flex-col relative overflow-hidden bg-background-dark">
+                <!-- Cinematic Background Preview -->
+                <div class="absolute inset-0 overflow-hidden">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-background-dark/50 z-10">
+                    </div>
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-background-dark/80 via-transparent to-transparent z-10">
+                    </div>
+                    <div class="scanline-overlay absolute inset-0 z-20"></div>
+                    <img id="preview-image" class="w-full h-full object-cover grayscale brightness-50 contrast-125"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJYs7fZhw78H9KWxk1RHXtGCl2iW2dg1VX3UZu7qdmb18KxQPxBt7MBMVXI1AAtuMVavNE4igUATq4jvAe2PK77trA3zmgUCVE-ogR-ubEa68l1QTxe6US2mU1TIDM1zkULYU5AJ2KIDYmAhqy9lJB6NNiqHBzEF6oBylG2N8uwjtIU7WgvSSt5FnkdSmGBBjF5OK-1w3QZjMnVAdriWb1C6GYEXuLhXKeQAq5G5LXfQkIXbAC26NXQ7oxxg4bbBfPpg2iomvijg" />
+                </div>
+                <!-- Content Overlay -->
+                <div class="relative z-30 flex flex-col h-full p-10">
+                    <div class="flex justify-between items-start mb-auto">
+                        <div>
+                            <div class="flex items-center gap-2 text-primary mb-2">
+                                <span class="material-symbols-outlined text-sm">location_on</span>
+                                <span class="text-xs font-black uppercase tracking-widest"
+                                    data-location="Chicago">Sector 7-G: Urban Core</span>
+                            </div>
+                            <h2
+                                class="text-white text-6xl font-black uppercase tracking-tighter leading-none mb-4 max-w-2xl">
+                                City Center: <br /><span class="text-primary italic">Skyline Collapse</span>
+                            </h2>
+                            <p class="text-[#baa69c] text-lg max-w-xl font-medium leading-relaxed">
+                                Deploy the MK-7 Destroyer into the densely packed financial district. Objective: Total
+                                structural failure of the Zenith Tower using kinetic explosives.
+                            </p>
+                        </div>
+                        <!-- Technical Stats Overlay -->
+                        <div class="flex flex-col gap-3">
+                            <div
+                                class="bg-surface-dark/80 backdrop-blur-md p-4 rounded-xl border border-accent-dark min-w-[200px]">
+                                <p class="text-[10px] text-primary font-bold uppercase mb-1">Destruction Goal</p>
+                                <p class="text-2xl text-white font-bold tracking-tighter">95% Collapse</p>
+                            </div>
+                            <div
+                                class="bg-surface-dark/80 backdrop-blur-md p-4 rounded-xl border border-accent-dark min-w-[200px]">
+                                <p class="text-[10px] text-[#baa69c] font-bold uppercase mb-1">Physics Complexity</p>
+                                <div class="flex gap-1 mt-1">
+                                    <span class="material-symbols-outlined text-primary text-xs font-fill">star</span>
+                                    <span class="material-symbols-outlined text-primary text-xs font-fill">star</span>
+                                    <span class="material-symbols-outlined text-primary text-xs font-fill">star</span>
+                                    <span class="material-symbols-outlined text-primary text-xs font-fill">star</span>
+                                    <span class="material-symbols-outlined text-[#baa69c] text-xs">star</span>
+                                </div>
+                            </div>
+                            <div
+                                class="bg-surface-dark/80 backdrop-blur-md p-4 rounded-xl border border-accent-dark min-w-[200px]">
+                                <p class="text-[10px] text-[#baa69c] font-bold uppercase mb-1">Est. Particle Count</p>
+                                <p class="text-xl text-white font-bold tracking-tighter">2.4M Units</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Footer Actions -->
+                    <div class="mt-auto pt-10">
+                        <div class="flex items-center gap-6">
+                            <button id="play-level-btn"
+                                class="flex min-w-[200px] h-14 cursor-pointer items-center justify-center rounded-xl bg-primary text-white text-lg font-black uppercase tracking-widest shadow-[0_0_30px_rgba(242,89,13,0.4)] hover:scale-105 transition-transform">
+                                <span>Play Level</span>
+                            </button>
+                            <button
+                                class="flex min-w-[180px] h-14 cursor-pointer items-center justify-center rounded-xl bg-accent-dark border border-white/10 text-white text-base font-bold uppercase tracking-wide hover:bg-accent-dark/80 transition-colors gap-2">
+                                <span class="material-symbols-outlined">science</span>
+                                <span>Edit Physics</span>
+                            </button>
+                            <button
+                                class="flex items-center justify-center rounded-xl size-14 bg-surface-dark border border-white/10 text-white hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined">leaderboard</span>
+                            </button>
+                            <div class="h-10 w-px bg-accent-dark mx-2"></div>
+                            <div class="flex items-center gap-4">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-[#baa69c] font-bold uppercase">Last Performance</span>
+                                    <span class="text-sm text-white font-bold">Rank #422 (S-Tier)</span>
+                                </div>
+                                <div class="flex -space-x-2">
+                                    <div
+                                        class="size-8 rounded-full border-2 border-background-dark bg-accent-dark flex items-center justify-center text-[10px] font-bold">
+                                        JD</div>
+                                    <div
+                                        class="size-8 rounded-full border-2 border-background-dark bg-primary flex items-center justify-center text-[10px] font-bold text-white">
+                                        MK</div>
+                                    <div
+                                        class="size-8 rounded-full border-2 border-background-dark bg-slate-500 flex items-center justify-center text-[10px] font-bold">
+                                        +5</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Corner Metadata (Industrial Branding) -->
+                <div class="absolute bottom-4 right-6 z-40 flex flex-col items-end opacity-40">
+                    <span class="text-[10px] text-white font-mono tracking-widest">BUILD_VER: 0.9.44_STABLE</span>
+                    <span class="text-[10px] text-white font-mono tracking-widest uppercase">Proprietary Physics Engine
+                        v4.2</span>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- GAME UI (Hidden Initially) -->
+    <!-- ============================================ -->
+    <div id="game-ui-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="ui-top-left">
+            <div class="weapon-toolbar">
+                <button class="weapon-btn active" data-weapon="meteor">Meteor</button>
+                <button class="weapon-btn" data-weapon="missile">Missile</button>
+                <button class="weapon-btn" data-weapon="bomb">Bomb</button>
+                <button class="weapon-btn" data-weapon="laser">Laser</button>
+                <button class="weapon-btn" data-weapon="tornado">Tornado</button>
+                <button class="weapon-btn" data-weapon="robot">Robot</button>
+                <button class="weapon-btn" data-weapon="ufo" id="weaponUfo">UFO</button>
+                <button class="weapon-btn" data-weapon="sticky">Sticky</button>
+            </div>
+            <div id="ufoStealthIndicator" class="stealth-indicator" style="display: none;">STEALTH ACTIVE</div>
+            <div id="hintText" class="hint">Tap anywhere to strike</div>
+        </div>
+
+        <div class="ui-top-right">
+            <button id="musicBtn" class="btn btn-small">Music: Off</button>
+            <button id="cityBtn" class="btn btn-small" style="display: none;">CITY: 1</button>
+            <button id="resetBtn" class="btn btn-small">Reset City</button>
+        </div>
+
+        <div class="ui-bottom">
+            <button id="detonateBtn" class="btn" style="display: none;">Detonate</button>
+        </div>
+
+        <!-- Robot Controls -->
+        <div id="robotControls" class="robot-controls" style="display: none;">
+            <div class="control-group left-controls">
+                <div class="control-btn" id="btnLeft">←</div>
+                <div class="control-btn" id="btnRight">→</div>
+            </div>
+            <div class="control-group right-controls">
+                <div class="control-btn" id="btnJump">↑</div>
+                <div class="control-btn" id="btnPunch">👊</div>
+                <div class="control-btn" id="btnLaser">🔫</div>
+            </div>
+        </div>
+
+        <!-- UFO Controls -->
+        <div id="ufoControls" class="ufo-controls" style="display: none;">
+            <div class="control-group left-controls">
+                <div class="control-btn" id="ufoBtnLeft">←</div>
+                <div class="control-btn" id="ufoBtnRight">→</div>
+                <div class="control-btn" id="ufoBtnUp">↑</div>
+                <div class="control-btn" id="ufoBtnDown">↓</div>
+            </div>
+            <div class="control-group right-controls">
+                <div class="control-btn" id="ufoBtnLaser">⚡</div>
+                <div class="control-btn" id="ufoBtnTractor">🧲</div>
+            </div>
+        </div>
+
+        <!-- UFO Drawer -->
+        <div id="ufoDrawer" class="ufo-drawer" style="display: none;">
+            <div class="drawer-header">Select Unit</div>
+            <div class="drawer-content">
+                <div class="variant-card selected" data-variant="scout">
+                    <div class="variant-title">Scout Class</div>
+                    <div class="variant-stats">Speed: High | Power: Low</div>
+                </div>
+                <div class="variant-card" data-variant="destroyer">
+                    <div class="variant-title">Destroyer Class</div>
+                    <div class="variant-stats">Speed: Low | Power: High</div>
+                </div>
+                <div class="variant-card" data-variant="harvester">
+                    <div class="variant-title">Harvester Class</div>
+                    <div class="variant-stats">Speed: Med | Tractor: Strong</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="game.js"></script>
+    <script>
+        // UI Switching Logic
+        const previewUi = document.getElementById('preview-ui');
+        const gameUiContainer = document.getElementById('game-ui-container');
+        const playBtn = document.getElementById('play-level-btn');
+        const deployBtn = document.getElementById('deploy-btn-top');
+        const body = document.body;
+
+        function startGame() {
+            // Fade out preview
+            previewUi.style.opacity = '0';
+
+            setTimeout(() => {
+                previewUi.style.display = 'none';
+                gameUiContainer.style.display = 'block';
+                body.classList.add('game-active');
+
+                // Trigger resize to ensure canvas is correct size
+                window.dispatchEvent(new Event('resize'));
+
+                // Initialize audio if needed (usually needs user interaction)
+                if (window.initAudioOnInteraction) {
+                    window.initAudioOnInteraction();
+                }
+            }, 500);
+        }
+
+        if (playBtn) playBtn.addEventListener('click', startGame);
+        if (deployBtn) deployBtn.addEventListener('click', startGame);
+
+        // Level Selection Logic
+        function selectLevel(cityId, element) {
+            // Update UI selection
+            const levelItems = document.querySelectorAll('.level-item');
+            levelItems.forEach(i => {
+                i.classList.remove('group'); // Reset group
+                i.classList.remove('bg-primary/10', 'border-primary/30');
+                const icon = i.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.remove('text-primary');
+                    icon.classList.add('text-[#baa69c]');
+                }
+                const text = i.querySelector('p');
+                if (text) {
+                    text.classList.remove('text-white', 'font-bold');
+                    text.classList.add('text-[#baa69c]', 'font-medium');
+                }
+            });
+
+            // Set active style for clicked item
+            // element.classList.add('group'); // Add group back? styling logic handled by classes
+            element.classList.add('bg-primary/10', 'border-primary/30');
+            const icon = element.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.classList.remove('text-[#baa69c]');
+                icon.classList.add('text-primary');
+            }
+            const text = element.querySelector('p');
+            if (text) {
+                text.classList.remove('text-[#baa69c]', 'font-medium');
+                text.classList.add('text-white', 'font-bold');
+            }
+
+            // Update game city ID
+            if (typeof currentCityId !== 'undefined') {
+                window.currentCityId = cityId;
+                console.log('Selected City:', cityId, 'Window val:', window.currentCityId);
+
+                // If game is already running, regenerate city
+                if (window.buildings && window.buildings.length > 0) {
+                    // Check if game functions exist globally
+                    if (typeof initBackground === 'function') initBackground();
+                    if (typeof generateCity === 'function') generateCity();
+                }
+            } else {
+                console.log('currentCityId not defined yet, setting on window');
+                window.currentCityId = cityId;
+            }
+        }
+    </script>
+</body>
+
+</html>
