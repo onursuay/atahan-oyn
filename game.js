@@ -1523,6 +1523,20 @@ class Building {
                 this.spawnGlassShard(px, py, 1.0);
             }
 
+            // Enhanced fracture: spawn dozens of physics particles
+            const particleCount = 25 + Math.floor(Math.random() * 20);
+            for (let i = 0; i < particleCount; i++) {
+                const px = this.x + Math.random() * this.width;
+                const py = this.y + Math.random() * this.height;
+                const color = Math.random() < 0.5 ? this.concreteColor.base : this.concreteColor.dark;
+                const vx = (Math.random() - 0.5) * 8;
+                const vy = -Math.random() * 10;
+                particles.push(new Particle(px, py, 12, 12, color, vx, vy));
+            }
+
+            // Screen shake on collapse
+            screenShake.intensity = Math.max(screenShake.intensity, 15);
+
             for (let i = 0; i < chunkCount; i++) {
                 if (particles.length >= MAX_PARTICLES) break;
                 const px = this.x + Math.random() * this.width;
@@ -3949,10 +3963,11 @@ class Robot {
         // Or specific 'ArmLaser' class? 
         // Let's use RobotHandLaser but with fixed target direction.
 
-        // Target is straight ahead in the direction of rotation
+        // Target is straight ahead in the direction of facing
         const range = 1000;
-        const targetX = laserX + Math.cos(this.rotationAngle) * range;
-        const targetY = laserY + Math.sin(this.rotationAngle) * range;
+        const fireAngle = this.facingRight ? 0 : Math.PI;
+        const targetX = laserX + Math.cos(fireAngle) * range;
+        const targetY = laserY + Math.sin(fireAngle) * range;
 
         robotHandLasers.push(new RobotHandLaser(laserX, laserY, targetX, targetY));
 
@@ -3986,21 +4001,16 @@ class Robot {
             if (moveX > 0) this.facingRight = true;
             else if (moveX < 0) this.facingRight = false;
 
-            // Calculate target rotation (in radians)
-            this.targetRotation = Math.atan2(moveY, moveX);
+            // Calculate target rotation (in radians) - REVERTED: Iron Man style upright movement
+            // We still track facingRight for horizontal laser firing
+            this.targetRotation = 0;
+            this.rotationAngle = 0;
         } else {
             // Friction: stronger damping while not moving
             const friction = this.onGround ? 0.8 : 0.85;
             this.velocityX *= friction;
             this.velocityY *= friction;
         }
-
-        // Smoothly interpolate current rotation to target rotation
-        // Normalize angles to -PI to PI for shortest path interpolation
-        let diff = this.targetRotation - this.rotationAngle;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        this.rotationAngle += diff * this.rotationSpeed;
 
         // Track air time for lift delay
         if (!this.onGround) {
@@ -4304,12 +4314,12 @@ class Robot {
 
         ctx.save();
 
-        // Apply smooth rotation around the robot's center
-        const centerX = drawX + this.width / 2;
-        const centerY = drawY + this.height / 2;
-        ctx.translate(centerX, centerY);
-        ctx.rotate(this.rotationAngle);
-        ctx.translate(-centerX, -centerY);
+        // Apply smooth rotation around the robot's center - REVERTED: Iron Man style upright movement
+        // const centerX = drawX + this.width / 2;
+        // const centerY = drawY + this.height / 2;
+        // ctx.translate(centerX, centerY);
+        // ctx.rotate(this.rotationAngle);
+        // ctx.translate(-centerX, -centerY);
 
         // Draw shadow under feet
         const shadowY = drawY + this.height + 2;
@@ -4751,15 +4761,17 @@ class UFO {
             }
         }
 
-        // Handle laser (continuous beam while E is held, pointer-aimed)
+        // Handle laser (continuous beam while E is held)
         // Only fire if in UFO mode (safety check)
-        if (currentWeapon === 'ufo' && ufoControls.laser && pointerActive) {
+        if (currentWeapon === 'ufo' && ufoControls.laser) {
             const currentTime = Date.now();
             if (currentTime - this.lastLaserFireTime >= this.laserFireRate) {
                 const centerX = this.x;
                 const centerY = this.y + this.height / 2;
-                // Aim toward pointer position
-                ufoHandLasers.push(new UFOLaser(centerX, centerY, pointerPosition.x, pointerPosition.y));
+                // Bottom Laser (E key): Always vertical down
+                const targetX = centerX;
+                const targetY = height; // Straight to ground
+                ufoHandLasers.push(new UFOLaser(centerX, centerY, targetX, targetY));
                 this.lastLaserFireTime = currentTime;
                 playUFOLaserSound();
             }
@@ -7978,195 +7990,193 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 
 // Robot controls - Desktop
 document.addEventListener('keydown', (e) => {
-    // Global P key for fullscreen
+    // Mode Switching
+    if (e.key === 'u' || e.key === 'U') {
+        currentWeapon = 'ufo';
+        spawnUFO();
+        e.preventDefault();
+        return;
+    }
+    if (e.key === 'i' || e.key === 'I') {
+        currentWeapon = 'robot';
+        spawnRobot();
+        e.preventDefault();
+        return;
+    }
+
+    // Fullscreen toggle
     if (e.key === 'p' || e.key === 'P') {
         toggleFullscreen();
         return;
     }
 
-    if (currentWeapon !== 'robot') return;
-    initAudioOnInteraction();
-
-    switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-            robotControls.up = true;
-            e.preventDefault();
-            break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-            robotControls.down = true;
-            e.preventDefault();
-            break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-            robotControls.left = true;
-            e.preventDefault();
-            break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-            robotControls.right = true;
-            e.preventDefault();
-            break;
-        case ' ':
-            robotControls.jump = true;
-            e.preventDefault();
-            break;
-        case 'f':
-        case 'F':
-            robotControls.punch = true;
-            e.preventDefault();
-            break;
-        case 'o':
-        case 'O':
-            // O key for missile launch (ROBOT mode only)
-            robotControls.missile = true;
-            e.preventDefault();
-            break;
-        case 'r':
-        case 'R':
-            robotControls.rightArmFire = true;
-            e.preventDefault();
-            break;
-        case 't':
-        case 'T':
-            robotControls.leftArmFire = true;
-            e.preventDefault();
-            break;
-        // E key removed - laser is now pointer-aimed
-    }
-});
-
-document.addEventListener('keyup', (e) => {
-    if (currentWeapon !== 'robot') return;
-
-    switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-            robotControls.up = false;
-            break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-            robotControls.down = false;
-            break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-            robotControls.left = false;
-            break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-            robotControls.right = false;
-            break;
-        case ' ':
-            robotControls.jump = false;
-            robotControls.jumpHeld = false;
-            break;
-        case 'r':
-        case 'R':
-            robotControls.rightArmFire = false;
-            break;
-        case 't':
-        case 'T':
-            robotControls.leftArmFire = false;
-            break;
-    }
-});
-
-// UFO controls - Desktop (E/F only work in UFO mode)
-document.addEventListener('keydown', (e) => {
-    if (currentWeapon !== 'ufo') return;
-    initAudioOnInteraction();
-
-    switch (e.key) {
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-            ufoControls.left = true;
-            e.preventDefault();
-            break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-            ufoControls.right = true;
-            e.preventDefault();
-            break;
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-            ufoControls.up = true;
-            e.preventDefault();
-            break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-            ufoControls.down = true;
-            e.preventDefault();
-            break;
-        case 'e':
-        case 'E':
-            ufoControls.laser = true;
-            e.preventDefault();
-            break;
-        case 'f':
-        case 'F':
-            ufoControls.tractor = true;
-            e.preventDefault();
-            break;
-        case 'o':
-        case 'O':
-            // Toggle invisibility (UFO mode only)
-            if (currentWeapon === 'ufo') {
+    if (currentWeapon === 'robot') {
+        initAudioOnInteraction();
+        switch (e.key) {
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+                robotControls.up = true;
+                e.preventDefault();
+                break;
+            case 'ArrowDown':
+            case 's':
+            case 'S':
+                robotControls.down = true;
+                e.preventDefault();
+                break;
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                robotControls.left = true;
+                e.preventDefault();
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                robotControls.right = true;
+                e.preventDefault();
+                break;
+            case ' ':
+                robotControls.jump = true;
+                e.preventDefault();
+                break;
+            case 'f':
+            case 'F':
+                robotControls.punch = true;
+                e.preventDefault();
+                break;
+            case 'o':
+            case 'O':
+                robotControls.missile = true;
+                e.preventDefault();
+                break;
+            case 'r':
+            case 'R':
+                robotControls.rightArmFire = true;
+                e.preventDefault();
+                break;
+            case 'e':
+            case 'E':
+                robotControls.leftArmFire = true;
+                e.preventDefault();
+                break;
+        }
+    } else if (currentWeapon === 'ufo') {
+        initAudioOnInteraction();
+        switch (e.key) {
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                ufoControls.left = true;
+                e.preventDefault();
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                ufoControls.right = true;
+                e.preventDefault();
+                break;
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+                ufoControls.up = true;
+                e.preventDefault();
+                break;
+            case 'ArrowDown':
+            case 's':
+            case 'S':
+                ufoControls.down = true;
+                e.preventDefault();
+                break;
+            case 'e':
+            case 'E':
+                ufoControls.laser = true; // Bottom Laser
+                e.preventDefault();
+                break;
+            case 'r':
+            case 'R':
                 ufoControls.invisibility = !ufoControls.invisibility;
-                if (ufo) {
-                    ufo.invisible = ufoControls.invisibility;
-                }
+                if (ufo) ufo.invisible = ufoControls.invisibility;
                 updateStealthIndicator();
                 e.preventDefault();
-            }
-            break;
+                break;
+            case 'f':
+            case 'F':
+                ufoControls.tractor = true;
+                e.preventDefault();
+                break;
+        }
     }
 });
 
 document.addEventListener('keyup', (e) => {
-    if (currentWeapon !== 'ufo') return;
-
-    switch (e.key) {
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-            ufoControls.left = false;
-            break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-            ufoControls.right = false;
-            break;
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-            ufoControls.up = false;
-            break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-            ufoControls.down = false;
-            break;
-        case 'e':
-        case 'E':
-            ufoControls.laser = false;
-            break;
-        case 'f':
-        case 'F':
-            ufoControls.tractor = false;
-            break;
+    if (currentWeapon === 'robot') {
+        switch (e.key) {
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+                robotControls.up = false;
+                break;
+            case 'ArrowDown':
+            case 's':
+            case 'S':
+                robotControls.down = false;
+                break;
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                robotControls.left = false;
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                robotControls.right = false;
+                break;
+            case ' ':
+                robotControls.jump = false;
+                robotControls.jumpHeld = false;
+                break;
+            case 'r':
+            case 'R':
+                robotControls.rightArmFire = false;
+                break;
+            case 'e':
+            case 'E':
+                robotControls.leftArmFire = false;
+                break;
+        }
+    } else if (currentWeapon === 'ufo') {
+        switch (e.key) {
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                ufoControls.left = false;
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                ufoControls.right = false;
+                break;
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+                ufoControls.up = false;
+                break;
+            case 'ArrowDown':
+            case 's':
+            case 'S':
+                ufoControls.down = false;
+                break;
+            case 'e':
+            case 'E':
+                ufoControls.laser = false;
+                break;
+            case 'f':
+            case 'F':
+                ufoControls.tractor = false;
+                break;
+        }
     }
 });
 
