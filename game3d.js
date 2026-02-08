@@ -236,7 +236,7 @@ function createRobot() {
     robotBody.position.set(0, 5, 0); // Drop from sky
     robotBody.linearDamping = 0.5; // Drag
     robotBody.fixedRotation = true; // Prevents tipping and rotation
-    robotBody.updateMassProperties();
+    // robotBody.updateMassProperties(); // Already done by fixedRotation usually
     world.addBody(robotBody);
 }
 
@@ -327,6 +327,13 @@ function handleInput() {
 
     if (keys.w) robotBody.velocity.z = -moveSpeed;
     if (keys.s) robotBody.velocity.z = moveSpeed;
+
+    // Strict Backward Limit: If S is NOT pressed, Z velocity cannot be positive (backward)
+    // In our coordinate system, -Z is Forward, +Z is Backward.
+    if (!keys.s && robotBody.velocity.z > 0) {
+        robotBody.velocity.z = 0;
+    }
+
     if (!keys.w && !keys.s) robotBody.velocity.z *= 0.9; // Extra damping when release
 
     if (keys.a) robotBody.velocity.x = -moveSpeed;
