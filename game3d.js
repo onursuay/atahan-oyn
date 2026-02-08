@@ -11,6 +11,12 @@ let projectiles = []; // Store active lasers
 let particles = [];   // Store active particles
 let buildingBlocks = []; // Store all building parts for collision checks
 let cameraShake = { x: 0, y: 0, intensity: 0 }; // Camera shake state
+let keys = {
+    w: false,
+    a: false,
+    s: false,
+    d: false
+};
 
 
 function initializeCityLevel() {
@@ -227,6 +233,8 @@ function createRobot() {
     robotBody.addShape(shape);
     robotBody.position.set(0, 5, 0); // Drop from sky
     robotBody.linearDamping = 0.5; // Drag
+    robotBody.fixedRotation = true; // Prevents tipping and rotation
+    robotBody.updateMassProperties();
     world.addBody(robotBody);
 }
 
@@ -256,6 +264,8 @@ function animate3D() {
     // Sync Robot
     if (robotBody && robotMesh) {
         robotMesh.position.copy(robotBody.position);
+        // Force rotation to be zero (facing forward)
+        robotBody.quaternion.set(0, 0, 0, 1);
         robotMesh.quaternion.copy(robotBody.quaternion);
     }
 
@@ -299,33 +309,39 @@ function animate3D() {
 // --- New Mechanics ---
 
 function handleInput() {
-    // We can use a simple state map or check keys directly if listener is set up
-    // But since this is called every frame, we need a key state tracker.
-    // game.js might already have one, but let's add a local one for 3D specificity if needed.
-    // Use the global 'keys' or adds listeners. For now, let's use the standard approach:
-    // We'll trust the global event listeners from createRobot or init, 
-    // BUT we need them to be continuous or one-shot. 
-    // The request said "Raycast or fast object" on KeyDown.
-    // So we should use an event listener for "KeyDown" rather than polling in Update for shooting.
+    if (!robotBody) return;
+
+    const moveSpeed = 15;
+
+    // Reset velocities (optional, or rely on damping)
+    // For "strafe" feel, we set velocity directly or apply impulses
+
+    if (keys.w) robotBody.velocity.z = -moveSpeed;
+    if (keys.s) robotBody.velocity.z = moveSpeed;
+    if (!keys.w && !keys.s) robotBody.velocity.z *= 0.9; // Extra damping when release
+
+    if (keys.a) robotBody.velocity.x = -moveSpeed;
+    if (keys.d) robotBody.velocity.x = moveSpeed;
+    if (!keys.a && !keys.d) robotBody.velocity.x *= 0.9;
 }
 
-// Add Key Listener for Shooting (One-shot)
+// Add Key Listeners for smooth movement
 window.addEventListener('keydown', (e) => {
-    if (!is3DGameActive || !robotBody) return;
+    if (!is3DGameActive) return;
 
-    if (e.code === 'KeyR') {
-        shootLaser('right');
-    }
-    if (e.code === 'KeyE') {
-        shootLaser('left');
+    const key = e.key.toLowerCase();
+    if (keys.hasOwnProperty(key)) {
+        keys[key] = true;
     }
 
-    // Movement Impulse (Simple implementation for "WASD")
-    const force = 50;
-    if (e.code === 'ArrowUp' || e.code === 'KeyW') robotBody.velocity.z = -10;
-    if (e.code === 'ArrowDown' || e.code === 'KeyS') robotBody.velocity.z = 10;
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') robotBody.velocity.x = -10;
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') robotBody.velocity.x = 10;
+    // E and R are disabled as per request (nothing triggers)
+});
+
+window.addEventListener('keyup', (e) => {
+    const key = e.key.toLowerCase();
+    if (keys.hasOwnProperty(key)) {
+        keys[key] = false;
+    }
 });
 
 function shootLaser(side) {
