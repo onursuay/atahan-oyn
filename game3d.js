@@ -15,7 +15,9 @@ let keys = {
     w: false,
     a: false,
     s: false,
-    d: false
+    d: false,
+    e: false,
+    r: false
 };
 
 
@@ -310,6 +312,13 @@ function animate3D() {
 
 function handleInput() {
     if (!robotBody) return;
+
+    // Immobilization Check (E or R)
+    if (keys.e || keys.r) {
+        robotBody.velocity.set(0, robotBody.velocity.y, 0);
+        // Keep vertical velocity (gravity) but stop horizontal movement
+        return;
+    }
 
     const moveSpeed = 15;
 
